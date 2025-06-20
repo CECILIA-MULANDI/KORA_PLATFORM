@@ -1,8 +1,10 @@
-const express = require("express");
+import express from "express";
+import { Pool } from "pg";
 const app = express();
-require("dotenv").config();
-const db = require("../databases/db_connection");
-const setupDatabase = require("../databases/setup");
+import dotenv from "dotenv";
+dotenv.config();
+import db from "./databases/db_connection.js";
+import setupDatabase from "./databases/setup.js";
 // Middleware
 app.use(express.json());
 
