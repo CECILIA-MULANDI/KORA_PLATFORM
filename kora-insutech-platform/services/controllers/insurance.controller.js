@@ -43,5 +43,18 @@ class InsurerController {
       }
     }
   }
+  async login(req, res) {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+    try {
+      const result = await db.pool.query('SELECT * FROM insurance_company WHERE email = $1', [email])
+      const insurer = result.rows[0];
+    } catch () {
+      
+    }
+
+  }
 }
 export default new InsurerController();
