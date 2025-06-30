@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { API_URL } from "@/constants/constant";
+import { API_URL } from "../constants/constant";
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
