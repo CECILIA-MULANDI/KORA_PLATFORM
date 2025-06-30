@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-
+import { API_URL } from "@/constants/constant";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -10,7 +10,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    const response = await fetch("/api/login", {
+    const response = await fetch(`${API_URL}/api/login/insurance-company`, {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });

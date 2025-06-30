@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-
+import { API_URL } from "@/constants/constant";
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,23 +38,20 @@ const Register = () => {
     }
     setIsLoading(true);
     try {
-      const response = await fetch(
-        "http://localhost:3001/api/register/insurance-company",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            phone,
-            address,
-            password,
-            confirmPassword,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/register/insurance-company`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          address,
+          password,
+          confirmPassword,
+        }),
+      });
       const data = await response.json();
       console.log(data);
       if (response.ok) {
