@@ -10,7 +10,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    const response = await fetch(`${API_URL}/api/login/insurance-company`, {
+    const response = await fetch(`${API_URL}/login/insurance-company`, {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
