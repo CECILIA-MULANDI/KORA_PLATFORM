@@ -12,6 +12,9 @@ const Login = () => {
     setIsLoading(true);
     const response = await fetch(`${API_URL}/login/insurance-company`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ email, password }),
     });
     const data = await response.json();

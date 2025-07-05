@@ -16,8 +16,8 @@ class InsurerController {
       ) {
         return res.status(400).json({ error: "All fields are required" });
       }
-      const existingInsurer = await query(
-        "SELECT * FROM insurance-company WHERE email = $1",
+      const existingInsurer = await db.pool.query(
+        "SELECT * FROM insurance_company WHERE email = $1",
         [email]
       );
       if (existingInsurer.rows.length > 0) {
@@ -89,17 +89,16 @@ class InsurerController {
         return res.status(401).json({ message: "Invalid credentials." });
       }
       const payload = {
-        id: newInsurer.id,
-        email: newInsurer.email,
+        id: insurer.id,
+        email: insurer.email,
       };
       const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiration });
       res.status(200).json({
         message: "Login successful!",
         token,
         user: {
-          id: newInsurer.id,
-
-          email: newInsurer.email,
+          id: insurer.id,
+          email: insurer.email,
         },
       });
     } catch (error) {
