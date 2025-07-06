@@ -3,6 +3,7 @@ import db from "../databases/db_connection.js";
 import jwt from "jsonwebtoken";
 import { jwtSecret, jwtExpiration } from "../config/auth.js";
 import { Wallet } from "ethers";
+import { v4 as uuidv4 } from "uuid";
 class InsurerController {
   async registerInsurer(req, res) {
     const { name, email, phone, address, password, confirmPassword } = req.body;
@@ -38,10 +39,25 @@ class InsurerController {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-
+      const wallet = Wallet.createRandom();
+      console.log(wallet);
+      const insuranceWalletAddress = wallet.address;
+      const privateKey = wallet.privateKey;
+      const koraInsurerId = uuidv4();
       const result = await db.pool.query(
-        `INSERT INTO insurance_company (name, email, phone, address, password) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, phone, address,password`,
-        [name, email, phone, address, hashedPassword]
+        `INSERT INTO insurance_company (name, email, phone, address, password, kora_insurer_id, insurer_wallet_address, insurer_private_key)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, name, email, phone, address, kora_insurer_id, insurer_wallet_address, blockchain_registered`,
+        [
+          name,
+          email,
+          phone,
+          address,
+          hashedPassword,
+          koraInsurerId,
+          insurerWalletAddress,
+          insurerPrivateKey,
+        ]
       );
       const newInsurer = result.rows[0];
       const payload = {
