@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import db from "../databases/db_connection.js";
 import jwt from "jsonwebtoken";
 import { jwtSecret, jwtExpiration } from "../config/auth.js";
+import { Wallet } from "ethers";
 class InsurerController {
   async registerInsurer(req, res) {
     const { name, email, phone, address, password, confirmPassword } = req.body;
