@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import { jwtSecret, jwtExpiration } from "../config/auth.js";
 import { Wallet } from "ethers";
 import { v4 as uuidv4 } from "uuid";
+import { registerOnChain } from "../blockchainservices/registerOnChain.js";
 class InsurerController {
   async registerInsurer(req, res) {
     const { name, email, phone, address, password, confirmPassword } = req.body;
@@ -39,10 +40,7 @@ class InsurerController {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      // Removed wallet creation and storage
-      // const wallet = Wallet.createRandom();
-      // const insuranceWalletAddress = wallet.address;
-      // const privateKey = wallet.privateKey;
+
       const koraInsurerId = uuidv4();
       const result = await db.pool.query(
         `INSERT INTO insurance_company (name, email, phone, address, password, kora_insurer_id)
@@ -51,10 +49,22 @@ class InsurerController {
         [name, email, phone, address, hashedPassword, koraInsurerId]
       );
       const newInsurer = result.rows[0];
+      const onChainResult = await registerOnChain(koraInsurerId);
+      if (onChainResult.success) {
+        await db.pool.query(
+          "UPDATE insurance_company SET blockchain_registered = TRUE,blockchain_tx_hash = $1 WHERE kora_insurer_id = $2"[
+            (onChainResult.txHash, koraInsurerId)
+          ]
+        );
+      } else {
+        console.error("On-chain registration failed:", onChainResult.error);
+      }
+
       const payload = {
         id: newInsurer.id,
         email: newInsurer.email,
       };
+
       const token = jwt.sign(payload, jwtSecret, { expiresIn: jwtExpiration });
       res.status(201).json({
         message: "Insurance company registered successfuly!",
