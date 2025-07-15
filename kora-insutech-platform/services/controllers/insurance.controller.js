@@ -39,25 +39,16 @@ class InsurerController {
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);
-      const wallet = Wallet.createRandom();
-      console.log(wallet);
-      const insuranceWalletAddress = wallet.address;
-      const privateKey = wallet.privateKey;
+      // Removed wallet creation and storage
+      // const wallet = Wallet.createRandom();
+      // const insuranceWalletAddress = wallet.address;
+      // const privateKey = wallet.privateKey;
       const koraInsurerId = uuidv4();
       const result = await db.pool.query(
-        `INSERT INTO insurance_company (name, email, phone, address, password, kora_insurer_id, insurer_wallet_address, insurer_private_key)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING id, name, email, phone, address, kora_insurer_id, insurer_wallet_address, blockchain_registered`,
-        [
-          name,
-          email,
-          phone,
-          address,
-          hashedPassword,
-          koraInsurerId,
-          insurerWalletAddress,
-          insurerPrivateKey,
-        ]
+        `INSERT INTO insurance_company (name, email, phone, address, password, kora_insurer_id)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, name, email, phone, address, kora_insurer_id, blockchain_registered`,
+        [name, email, phone, address, hashedPassword, koraInsurerId]
       );
       const newInsurer = result.rows[0];
       const payload = {

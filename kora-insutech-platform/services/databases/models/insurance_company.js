@@ -15,12 +15,6 @@ const createTables = {
 
    
       kora_insurer_id UUID UNIQUE NOT NULL DEFAULT uuid_generate_v4(),
-      insurer_wallet_address VARCHAR(255) UNIQUE,
-      /*
-      TODO:  Place holder--need to secure this
-      */
-     
-      insurer_private_key TEXT,
       blockchain_registered BOOLEAN DEFAULT FALSE,
       blockchain_tx_hash VARCHAR(255),
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

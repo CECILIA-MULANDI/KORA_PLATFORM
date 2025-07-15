@@ -1,15 +1,27 @@
+import * as dotenv from "dotenv";
+
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-require("dotenv").config();
+
+dotenv.config();
+
 const config: HardhatUserConfig = {
-  solidity: "0.8.28",
+  solidity: {
+    version: "0.8.9",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+      evmVersion: "london",
+    },
+  },
   networks: {
-    calibration: {
-      url: "https://api.calibration.node.glif.io/rpc/v1",
-      accounts: [process.env.PRIVATE_KEY!],
-      chainId: 314159,
+    scrollTestnet: {
+      url: process.env.SCROLL_TESTNET_URL ?? "",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
     },
   },
 };
-
 export default config;
