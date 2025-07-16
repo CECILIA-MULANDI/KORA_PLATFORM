@@ -52,9 +52,8 @@ class InsurerController {
       const onChainResult = await registerOnChain(koraInsurerId);
       if (onChainResult.success) {
         await db.pool.query(
-          "UPDATE insurance_company SET blockchain_registered = TRUE,blockchain_tx_hash = $1 WHERE kora_insurer_id = $2"[
-            (onChainResult.txHash, koraInsurerId)
-          ]
+          "UPDATE insurance_company SET blockchain_registered = TRUE, blockchain_tx_hash = $1 WHERE kora_insurer_id = $2",
+          [onChainResult.txHash, koraInsurerId]
         );
       } else {
         console.error("On-chain registration failed:", onChainResult.error);
