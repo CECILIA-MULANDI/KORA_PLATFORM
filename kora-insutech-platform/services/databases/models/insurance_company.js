@@ -1,4 +1,3 @@
-// query to create registration for insurance company
 const createTables = {
   insurance_company: `
     
@@ -23,8 +22,7 @@ const createTables = {
     );
 
   
-    CREATE INDEX IF NOT EXISTS idx_kora_insurer_id ON insurance_company (kora_insurer_id);
-    CREATE INDEX IF NOT EXISTS idx_insurer_wallet_address ON insurance_company (insurer_wallet_address);
+   
   `,
 };
 
