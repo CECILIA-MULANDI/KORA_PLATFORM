@@ -1,13 +1,17 @@
 "use client";
 import { useState } from "react";
 import { API_URL } from "../constants/constant";
-
+import { useRouter } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
 const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+
+  const { login } = useAuth();
+  const router = useRouter();
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -20,10 +24,10 @@ const LoginForm = () => {
     });
     const data = await response.json();
     if (response.ok) {
-      setMessage(data.message);
-      setMessageType("success");
+      login(data.token, data.user);
+      router.push("/dashboard");
     } else {
-      setMessage(data.message);
+      setMessage(data.message || data.error || "Login failed");
       setMessageType("error");
     }
     setIsLoading(false);

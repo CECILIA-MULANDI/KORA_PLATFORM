@@ -1,7 +1,8 @@
 "use client";
 import { useState } from "react";
 import { API_URL } from "../constants/constant";
-
+import { useRouter } from "next/navigation";
+import { useAuth } from "../contexts/AuthContext";
 const RegisterForm = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -12,6 +13,8 @@ const RegisterForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const { login } = useAuth();
+  const router = useRouter();
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setMessage("");
@@ -55,21 +58,14 @@ const RegisterForm = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        setMessage(
-          "Registration successful!Insurance company has been created!"
-        );
-        setMessageType("success");
-        setName("");
-        setEmail("");
-        setPhone("");
-        setAddress("");
-        setPassword("");
-        setConfirmPassword("");
+        login(data.token, data.user);
+        router.push("/dashboard");
       } else {
         setMessage(data.error || "Registration failed");
         setMessageType("error");
       }
     } catch (error) {
+      console.error("Registration error:", error);
       setMessage("Registration failed");
       setMessageType("error");
     } finally {
