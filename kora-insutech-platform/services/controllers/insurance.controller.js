@@ -115,7 +115,10 @@ class InsurerController {
         token,
         user: {
           id: insurer.id,
+          insurance_company_name: insurer.name,
           email: insurer.email,
+          phone: insurer.phone,
+          address: insurer.address,
         },
       });
     } catch (error) {

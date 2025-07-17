@@ -11,39 +11,35 @@ const Dashboard = () => {
       <div className="px-4 py-6 sm:px-0">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Welcome to Your Dashboard
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome, {user?.insurance_company_name}!
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-8">
               Manage your insurance policies, quotes, and company information
               from here.
             </p>
 
             {/* Company Info Card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h3 className="text-lg font-medium text-blue-900 mb-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+              <h3 className="text-lg font-medium text-blue-900 mb-4">
                 Company Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <p className="text-sm font-medium text-blue-700">
-                    Company Name:
+                  <p className="text-sm font-medium text-blue-700 mb-1">
+                    Company Name
                   </p>
-                  <p className="text-sm text-blue-600">
+                  <p className="text-lg text-blue-900 font-semibold">
                     {user?.insurance_company_name}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-blue-700">Email:</p>
-                  <p className="text-sm text-blue-600">{user?.email}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-blue-700">Phone:</p>
-                  <p className="text-sm text-blue-600">{user?.phone}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-blue-700">Address:</p>
-                  <p className="text-sm text-blue-600">{user?.address}</p>
+                  <p className="text-sm font-medium text-blue-700 mb-1">
+                    Email Address
+                  </p>
+                  <p className="text-lg text-blue-900 font-semibold">
+                    {user?.email}
+                  </p>
                 </div>
               </div>
             </div>
