@@ -49,14 +49,19 @@ class InsurerController {
         [name, email, phone, address, hashedPassword, koraInsurerId]
       );
       const newInsurer = result.rows[0];
+
+      console.log("🔗 Starting blockchain registration for:", koraInsurerId);
       const onChainResult = await registerOnChain(koraInsurerId);
+      console.log("🔗 Blockchain result:", onChainResult);
+
       if (onChainResult.success) {
+        console.log("✅ Updating database with tx hash:", onChainResult.txHash);
         await db.pool.query(
           "UPDATE insurance_company SET blockchain_registered = TRUE, blockchain_tx_hash = $1 WHERE kora_insurer_id = $2",
           [onChainResult.txHash, koraInsurerId]
         );
       } else {
-        console.error("On-chain registration failed:", onChainResult.error);
+        console.error("❌ On-chain registration failed:", onChainResult.error);
       }
 
       const payload = {
