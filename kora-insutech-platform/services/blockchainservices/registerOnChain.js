@@ -1,5 +1,12 @@
 import { ethers } from "ethers";
-import abi from "./abi.json" assert { type: "json" };
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const abi = JSON.parse(readFileSync(path.join(__dirname, "abi.json"), "utf8"));
 
 // Debug environment variables
 console.log("🔧 Blockchain Environment Check:");

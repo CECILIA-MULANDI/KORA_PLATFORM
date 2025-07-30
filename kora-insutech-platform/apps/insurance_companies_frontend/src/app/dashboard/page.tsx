@@ -1,13 +1,15 @@
 "use client";
+import { useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
+import PolicyUpload from "../components/PolicyUpload";
 import { useAuth } from "../contexts/AuthContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [showUpload, setShowUpload] = useState(false);
 
   return (
     <DashboardLayout>
-      {/* Welcome Section */}
       <div className="px-4 py-6 sm:px-0">
         <div className="bg-white overflow-hidden shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -70,8 +72,11 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </div>
-                <button className="mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                  Coming Soon
+                <button
+                  onClick={() => setShowUpload(!showUpload)}
+                  className="mt-4 bg-white text-blue-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50 transition"
+                >
+                  {showUpload ? "Hide Upload" : "Upload Policy"}
                 </button>
               </div>
 
@@ -128,11 +133,18 @@ const Dashboard = () => {
                     </p>
                   </div>
                 </div>
-                <button className="mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                <button className="mt-4 bg-white text-purple-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-50 transition">
                   Coming Soon
                 </button>
               </div>
             </div>
+
+            {/* Upload Section - Shows when button is clicked */}
+            {showUpload && (
+              <div className="mt-8">
+                <PolicyUpload />
+              </div>
+            )}
 
             {/* Stats Section */}
             <div className="mt-8">

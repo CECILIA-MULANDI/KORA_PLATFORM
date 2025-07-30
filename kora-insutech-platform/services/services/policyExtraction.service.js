@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import pdfParse from "pdf-parse";
+import pdf2pic from "pdf2pic";
 import Tesseract from "tesseract.js";
 import sharp from "sharp";
 
@@ -67,9 +67,26 @@ class PolicyExtractionService {
   // Extract text from PDF files
   async extractTextFromPDF(filePath) {
     try {
-      const dataBuffer = fs.readFileSync(filePath);
-      const data = await pdfParse(dataBuffer);
-      return data.text;
+      const convert = pdf2pic.fromPath(filePath, {
+        density: 300, // Higher DPI for better quality
+        saveFilename: "page",
+        savePath: "./temp",
+        format: "png",
+        width: 2480, // A4 at 300 DPI
+        height: 3508,
+      });
+
+      const result = await convert(1); // Convert first page
+      const imagePath = result.path;
+
+      const extractedText = await this.extractTextFromImage(imagePath);
+
+      // Clean up temporary image
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+      }
+
+      return extractedText;
     } catch (error) {
       throw new Error(`PDF extraction failed: ${error.message}`);
     }
@@ -78,10 +95,8 @@ class PolicyExtractionService {
   // Extract text from image files using OCR
   async extractTextFromImage(filePath) {
     try {
-      // First, optimize the image for better OCR results
       const optimizedImagePath = await this.optimizeImageForOCR(filePath);
 
-      // Use Tesseract.js for OCR
       const {
         data: { text },
       } = await Tesseract.recognize(optimizedImagePath, "eng", {
@@ -91,6 +106,10 @@ class PolicyExtractionService {
               m.progress ? Math.round(m.progress * 100) + "%" : ""
             }`
           ),
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        tessedit_char_whitelist:
+          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,:-/@ ",
+        preserve_interword_spaces: "1",
       });
 
       // Clean up optimized image if it's different from original
@@ -113,136 +132,213 @@ class PolicyExtractionService {
       );
 
       await sharp(filePath)
-        .resize(null, 2000, { withoutEnlargement: true }) // Increase height to 2000px max
-        .greyscale() // Convert to grayscale
-        .normalize() // Normalize contrast
-        .sharpen() // Sharpen the image
-        .png() // Convert to PNG for better OCR
+        .resize(null, 3000, { withoutEnlargement: true }) // Increase to 3000px for better text recognition
+        .greyscale()
+        .normalize()
+        .sharpen({ sigma: 1.5 }) // More aggressive sharpening
+        .threshold(128) // Convert to black and white for better OCR
+        .png({ quality: 100 })
         .toFile(outputPath);
 
       return outputPath;
     } catch (error) {
       console.warn("Image optimization failed, using original:", error.message);
-      return filePath; // Return original if optimization fails
+      return filePath;
     }
   }
 
-  // Use OpenAI to structure extracted text into policy data
+  // Use AI to structure extracted text into policy data
   async structureTextWithAI(extractedText) {
     try {
-      const prompt = `
-You are an AI assistant specialized in extracting structured data from insurance policy documents. 
-Please analyze the following text extracted from an insurance policy document and extract the key information.
+      console.log("=== DEBUG: First 1000 characters of extracted text ===");
+      console.log(extractedText.substring(0, 1000));
+      console.log("=== END DEBUG ===");
 
-Return the data in the following JSON format:
-{
-  "policy_number": "string",
-  "policy_holder_name": "string", 
-  "policy_holder_email": "string or null",
-  "policy_holder_phone": "string or null",
-  "policy_type": "string (auto, health, life, property, etc.)",
-  "coverage_amount": "number (in dollars)",
-  "premium_amount": "number (in dollars)",
-  "deductible_amount": "number (in dollars)",
-  "policy_start_date": "YYYY-MM-DD format",
-  "policy_end_date": "YYYY-MM-DD format",
-  "additional_info": {
-    "vehicle_info": "string or null (for auto policies)",
-    "property_address": "string or null (for property policies)",
-    "beneficiaries": "string or null (for life policies)",
-    "medical_conditions": "string or null (for health policies)"
-  }
-}
+      // Check if Ollama is available by making a simple request
+      let ollamaAvailable = false;
+      if (PRIMARY_AI_SERVICE === AI_SERVICES.OLLAMA_LOCAL) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-If any information is not found or unclear, use null for that field.
-Be as accurate as possible and only extract information that is clearly stated in the document.
+          const healthCheck = await fetch(
+            `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/tags`,
+            {
+              method: "GET",
+              signal: controller.signal,
+            }
+          );
 
-Document text:
-${extractedText}
-`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert at extracting structured data from insurance documents. Always respond with valid JSON only.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        temperature: 0.1, // Low temperature for consistent results
-        max_tokens: 1000,
-      });
-
-      const aiResponse = response.choices[0].message.content;
-
-      // Parse the JSON response
-      try {
-        const structuredData = JSON.parse(aiResponse);
-        return this.validateAndCleanData(structuredData);
-      } catch (parseError) {
-        console.error("❌ Failed to parse AI response as JSON:", aiResponse);
-        throw new Error("AI response was not valid JSON");
+          clearTimeout(timeoutId);
+          ollamaAvailable = healthCheck.ok;
+        } catch (e) {
+          console.warn("Ollama health check failed:", e.message);
+          ollamaAvailable = false;
+        }
       }
-    } catch (error) {
-      if (error.message.includes("API key")) {
-        console.warn(
-          "⚠️ OpenAI API key not configured, using fallback extraction"
-        );
+
+      // If Ollama is not available, use fallback immediately
+      if (PRIMARY_AI_SERVICE === AI_SERVICES.OLLAMA_LOCAL && !ollamaAvailable) {
+        console.warn("Ollama service not available, using fallback extraction");
         return this.fallbackExtraction(extractedText);
       }
-      throw new Error(`AI structuring failed: ${error.message}`);
+
+      // Otherwise try the configured service
+      switch (PRIMARY_AI_SERVICE) {
+        case AI_SERVICES.OLLAMA_LOCAL:
+          return await this.structureWithOllama(extractedText);
+        case AI_SERVICES.ANTHROPIC_CLAUDE:
+          return await this.structureWithClaude(extractedText);
+        case AI_SERVICES.GOOGLE_DOCUMENT_AI:
+          return await this.structureWithGoogle(extractedText);
+        case AI_SERVICES.FALLBACK_REGEX:
+          return this.fallbackExtraction(extractedText);
+        default:
+          console.warn(
+            `Unknown AI service: ${PRIMARY_AI_SERVICE}, using fallback`
+          );
+          return this.fallbackExtraction(extractedText);
+      }
+    } catch (error) {
+      console.warn(
+        `AI service ${PRIMARY_AI_SERVICE} failed, using fallback:`,
+        error.message
+      );
+      return this.fallbackExtraction(extractedText);
+    }
+  }
+
+  // Ollama implementation
+  async structureWithOllama(extractedText) {
+    const prompt = `Extract insurance policy data from this text and return ONLY valid JSON:
+${extractedText}
+
+Return format:
+{"policy_number":"","policy_holder_name":"","policy_type":"","coverage_amount":0,"premium_amount":0,"deductible_amount":0,"policy_start_date":"","policy_end_date":"","policy_holder_email":"","policy_holder_phone":"","additional_info":{}}`;
+
+    const response = await fetch(
+      `${process.env.OLLAMA_URL || "http://localhost:11434"}/api/generate`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: process.env.OLLAMA_MODEL || "llama3.2",
+          prompt: prompt,
+          stream: false,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.response) {
+      throw new Error("No response from Ollama");
+    }
+
+    try {
+      const structuredData = JSON.parse(data.response);
+      return this.validateAndCleanData(structuredData);
+    } catch (parseError) {
+      console.warn("Failed to parse Ollama response as JSON:", data.response);
+      throw new Error("Invalid JSON response from Ollama");
     }
   }
 
   // Fallback extraction using regex patterns (when AI is not available)
   fallbackExtraction(text) {
+    console.log("Raw extracted text:", text.substring(0, 500)); // Debug first 500 chars
+
     const data = {
-      policy_number: this.extractWithRegex(
-        text,
-        /policy\s*(?:number|no\.?|#)\s*:?\s*([A-Z0-9\-]+)/i
-      ),
-      policy_holder_name: this.extractWithRegex(
-        text,
-        /(?:insured|policy\s*holder|name)\s*:?\s*([A-Za-z\s]+)/i
-      ),
+      policy_number:
+        this.extractWithRegex(
+          text,
+          /Policy\s*\/?\s*Certificate\s*No\.?\s*:?\s*([0-9]{10,15})/i
+        ) || this.extractWithRegex(text, /([0-9]{12,15})/), // Long number sequences
+
+      policy_holder_name:
+        this.extractWithRegex(
+          text,
+          /Name\s*of\s*Insured\s*:?\s*(MR\.?\s*[A-Z\s]+)/i
+        ) || this.extractWithRegex(text, /Insured\s*:?\s*(MR\.?\s*[A-Z\s]+)/i),
+
       policy_holder_email: this.extractWithRegex(
         text,
         /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
       ),
-      policy_holder_phone: this.extractWithRegex(
-        text,
-        /(?:phone|tel|mobile)\s*:?\s*([\d\-\(\)\s]+)/i
-      ),
-      policy_type: this.extractWithRegex(
-        text,
-        /(?:policy\s*type|coverage\s*type)\s*:?\s*(auto|health|life|property|home|car)/i
-      ),
-      coverage_amount: this.extractAmountWithRegex(
-        text,
-        /(?:coverage|sum\s*insured|limit)\s*:?\s*\$?([\d,]+)/i
-      ),
-      premium_amount: this.extractAmountWithRegex(
-        text,
-        /(?:premium|payment)\s*:?\s*\$?([\d,]+)/i
-      ),
+
+      policy_holder_phone:
+        this.extractWithRegex(
+          text,
+          /Contact\s*details\s*:?\s*([0-9\-\s+]{10,15})/i
+        ) || this.extractWithRegex(text, /([0-9]{10})/), // 10-digit phone numbers
+
+      policy_type:
+        text.toLowerCase().includes("vehicle") ||
+        text.toLowerCase().includes("car")
+          ? "auto"
+          : text.toLowerCase().includes("health")
+          ? "health"
+          : "unknown",
+
+      coverage_amount:
+        this.extractAmountWithRegex(
+          text,
+          /IDV\s*\(Insurer.*Declared.*Value\)\s*Rs\.?\s*([0-9,]+)/i
+        ) ||
+        this.extractAmountWithRegex(
+          text,
+          /Total\s*Cover\s*SI.*Rs\.?\s*([0-9,]+)/i
+        ) ||
+        this.extractAmountWithRegex(text, /([0-9]{3},?[0-9]{3})/), // Look for 6-digit amounts
+
+      premium_amount:
+        this.extractAmountWithRegex(text, /FINAL\s*PREMIUM\s*([0-9,]+)/i) ||
+        this.extractAmountWithRegex(text, /Total.*Premium.*([0-9,]+)/i),
+
       deductible_amount: this.extractAmountWithRegex(
         text,
-        /deductible\s*:?\s*\$?([\d,]+)/i
+        /deductible\s*Rs\.?\s*([0-9,]+)/i
       ),
-      policy_start_date: this.extractDateWithRegex(
-        text,
-        /(?:effective|start|from)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
-      ),
-      policy_end_date: this.extractDateWithRegex(
-        text,
-        /(?:expir|end|to|until)\s*:?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
-      ),
-      additional_info: {},
+
+      policy_start_date:
+        this.extractDateWithRegex(
+          text,
+          /From\s*([0-9]{2}:[0-9]{2})\s*Hrs\s*on\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i
+        ) ||
+        this.extractDateWithRegex(
+          text,
+          /Period\s*of\s*Insurance.*From.*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i
+        ),
+
+      policy_end_date:
+        this.extractDateWithRegex(
+          text,
+          /to\s*([0-9]{2}:[0-9]{2})\s*on\s*([0-9]{2}\/[0-9]{2}\/[0-9]{4})/i
+        ) || this.extractDateWithRegex(text, /([0-9]{4}-[0-9]{2}-[0-9]{2})/), // ISO format
+
+      additional_info: {
+        vehicle_registration: this.extractWithRegex(
+          text,
+          /Registration\s*Number.*([A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4})/i
+        ),
+        vehicle_make: this.extractWithRegex(text, /Make.*Model.*([A-Z]+)/i),
+        vehicle_model: this.extractWithRegex(
+          text,
+          /(CHEVROLET|MARUTI|HONDA|TOYOTA|[A-Z]+)\s+([A-Z0-9\s]+)/i
+        ),
+        engine_number: this.extractWithRegex(
+          text,
+          /Engine.*Chassis.*Vehicle.*([A-Z0-9]+)/i
+        ),
+        zone: this.extractWithRegex(
+          text,
+          /Zone\s*A.*Geographical\s*Area\s*([A-Za-z]+)/i
+        ),
+      },
     };
 
     return this.validateAndCleanData(data);
