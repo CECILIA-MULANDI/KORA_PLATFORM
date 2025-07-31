@@ -1,7 +1,10 @@
 import db from "../databases/db_connection.js";
 import { v4 as uuidv4 } from "uuid";
 import policyExtractionService from "../services/policyExtraction.service.js";
-import { getFileInfo, deleteUploadedFile } from "../middleware/upload.middleware.js";
+import {
+  getFileInfo,
+  deleteUploadedFile,
+} from "../middleware/upload.middleware.js";
 
 class PolicyController {
   // Upload and extract policy data from document
@@ -11,49 +14,60 @@ class PolicyController {
     try {
       // Check if file was uploaded
       if (!req.file) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "No file uploaded",
-          message: "Please upload a policy document (PDF, Image, or Word document)"
+          message:
+            "Please upload a policy document (PDF, Image, or Word document)",
         });
       }
-
       const fileInfo = getFileInfo(req.file);
       console.log(`📄 Processing policy document: ${fileInfo.originalname}`);
 
       // Extract policy data using AI/OCR
       const extractionResult = await policyExtractionService.extractPolicyData(
-        req.file.path, 
+        req.file.path,
         req.file.mimetype
       );
 
       if (!extractionResult.success) {
         // Clean up uploaded file if extraction failed
         deleteUploadedFile(req.file.filename);
-        
+
         return res.status(400).json({
           error: "Policy extraction failed",
           message: extractionResult.error,
-          file_info: fileInfo
+          file_info: fileInfo,
         });
       }
 
       // Store the extraction result temporarily (not in final policies table yet)
       // This allows for review and correction before final submission
       const tempId = uuidv4();
-      
-      const tempResult = await db.pool.query(`
+
+      const tempResult = await db.pool.query(
+        `
         INSERT INTO policy_extractions (
           temp_id, insurance_company_id, original_filename, file_path, file_url,
           extracted_text, structured_data, confidence_score, extraction_status
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *
-      `, [
-        tempId, insurance_company_id, fileInfo.originalname, req.file.path, fileInfo.url,
-        extractionResult.extractedText, JSON.stringify(extractionResult.structuredData),
-        extractionResult.confidence, 'pending_review'
-      ]);
+      `,
+        [
+          tempId,
+          insurance_company_id,
+          fileInfo.originalname,
+          req.file.path,
+          fileInfo.url,
+          extractionResult.extractedText,
+          JSON.stringify(extractionResult.structuredData),
+          extractionResult.confidence,
+          "pending_review",
+        ]
+      );
 
-      console.log(`✅ Policy extraction completed with ${extractionResult.confidence}% confidence`);
+      console.log(
+        `✅ Policy extraction completed with ${extractionResult.confidence}% confidence`
+      );
 
       res.status(200).json({
         message: "Policy document processed successfully",
@@ -62,20 +76,20 @@ class PolicyController {
         extracted_data: extractionResult.structuredData,
         confidence_score: extractionResult.confidence,
         extraction_status: "pending_review",
-        next_step: "Review the extracted data and call /api/policies/confirm to finalize"
+        next_step:
+          "Review the extracted data and call /api/policies/confirm to finalize",
       });
-
     } catch (error) {
       console.error("Error processing policy document:", error);
-      
+
       // Clean up uploaded file on error
       if (req.file) {
         deleteUploadedFile(req.file.filename);
       }
-      
-      res.status(500).json({ 
+
+      res.status(500).json({
         error: "Internal server error",
-        message: "Failed to process policy document"
+        message: "Failed to process policy document",
       });
     }
   }
@@ -85,41 +99,74 @@ class PolicyController {
     const { temp_id, corrections } = req.body;
     const insurance_company_id = req.user.id;
 
+    console.log("=== CONFIRM POLICY DEBUG ===");
+    console.log("temp_id:", temp_id);
+    console.log("corrections:", corrections);
+    console.log("insurance_company_id:", insurance_company_id);
+
     try {
       if (!temp_id) {
-        return res.status(400).json({ 
+        console.log("ERROR: Missing temp_id");
+        return res.status(400).json({
           error: "Missing temp_id",
-          message: "temp_id is required to confirm policy data"
+          message: "temp_id is required to confirm policy data",
         });
       }
 
       // Get the temporary extraction data
-      const tempResult = await db.pool.query(`
+      const tempResult = await db.pool.query(
+        `
         SELECT * FROM policy_extractions 
         WHERE temp_id = $1 AND insurance_company_id = $2 AND extraction_status = 'pending_review'
-      `, [temp_id, insurance_company_id]);
+      `,
+        [temp_id, insurance_company_id]
+      );
 
       if (tempResult.rows.length === 0) {
-        return res.status(404).json({ 
-          error: "Extraction not found or already processed"
+        return res.status(404).json({
+          error: "Extraction not found or already processed",
         });
       }
 
       const extractionData = tempResult.rows[0];
-      let policyData = JSON.parse(extractionData.structured_data);
+      let policyData =
+        typeof extractionData.structured_data === "string"
+          ? JSON.parse(extractionData.structured_data)
+          : extractionData.structured_data;
 
       // Apply any corrections provided by the user
-      if (corrections && typeof corrections === 'object') {
+      if (corrections && typeof corrections === "object") {
         policyData = { ...policyData, ...corrections };
-        console.log(`📝 Applied corrections to policy data for temp_id: ${temp_id}`);
+        console.log(
+          `📝 Applied corrections to policy data for temp_id: ${temp_id}`
+        );
+      }
+
+      // Add validation and default values before the INSERT
+      // Set default end date if missing (e.g., 1 year from start date)
+      if (!policyData.policy_end_date && policyData.policy_start_date) {
+        const startDate = new Date(policyData.policy_start_date);
+        const endDate = new Date(startDate);
+        endDate.setFullYear(startDate.getFullYear() + 1); // Add 1 year
+        policyData.policy_end_date = endDate.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+        console.log(`📅 Set default end date: ${policyData.policy_end_date}`);
       }
 
       // Validate required fields
       if (!policyData.policy_number || !policyData.policy_holder_name) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Missing required fields",
           message: "policy_number and policy_holder_name are required",
-          current_data: policyData
+          current_data: policyData,
+        });
+      }
+
+      // Add validation for dates
+      if (!policyData.policy_start_date || !policyData.policy_end_date) {
+        return res.status(400).json({
+          error: "Missing required dates",
+          message: "policy_start_date and policy_end_date are required",
+          current_data: policyData,
         });
       }
 
@@ -130,9 +177,9 @@ class PolicyController {
       );
 
       if (existingPolicy.rows.length > 0) {
-        return res.status(409).json({ 
+        return res.status(409).json({
           error: "Policy number already exists for this insurance company",
-          policy_number: policyData.policy_number
+          policy_number: policyData.policy_number,
         });
       }
 
@@ -140,43 +187,47 @@ class PolicyController {
       const kora_policy_id = uuidv4();
 
       // Insert final policy data
-      const result = await db.pool.query(`
+      const result = await db.pool.query(
+        `
         INSERT INTO policies (
           policy_number, policy_holder_name, policy_holder_email, policy_holder_phone,
           policy_type, coverage_amount, premium_amount, deductible_amount,
           policy_start_date, policy_end_date, insurance_company_id,
           policy_document_url, policy_document_filename, policy_document_size,
-          kora_policy_id, extraction_confidence, additional_info
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          kora_policy_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         RETURNING *
-      `, [
-        policyData.policy_number,
-        policyData.policy_holder_name,
-        policyData.policy_holder_email,
-        policyData.policy_holder_phone,
-        policyData.policy_type,
-        policyData.coverage_amount,
-        policyData.premium_amount,
-        policyData.deductible_amount,
-        policyData.policy_start_date,
-        policyData.policy_end_date,
-        insurance_company_id,
-        extractionData.file_url,
-        extractionData.original_filename,
-        null, // file size - we can add this later if needed
-        kora_policy_id,
-        extractionData.confidence_score,
-        JSON.stringify(policyData.additional_info || {})
-      ]);
+      `,
+        [
+          policyData.policy_number,
+          policyData.policy_holder_name,
+          policyData.policy_holder_email,
+          policyData.policy_holder_phone,
+          policyData.policy_type,
+          policyData.coverage_amount,
+          policyData.premium_amount,
+          policyData.deductible_amount,
+          policyData.policy_start_date,
+          policyData.policy_end_date,
+          insurance_company_id,
+          extractionData.file_url,
+          extractionData.original_filename,
+          null, // file size
+          kora_policy_id,
+        ]
+      );
 
       const newPolicy = result.rows[0];
 
       // Update extraction status to completed
-      await db.pool.query(`
+      await db.pool.query(
+        `
         UPDATE policy_extractions 
         SET extraction_status = 'completed', policy_id = $1, updated_at = CURRENT_TIMESTAMP
         WHERE temp_id = $2
-      `, [newPolicy.id, temp_id]);
+      `,
+        [newPolicy.id, temp_id]
+      );
 
       console.log(`✅ Policy confirmed and saved: ${policyData.policy_number}`);
 
@@ -196,18 +247,21 @@ class PolicyController {
           kora_policy_id: newPolicy.kora_policy_id,
           extraction_confidence: newPolicy.extraction_confidence,
           document_filename: newPolicy.policy_document_filename,
-          created_at: newPolicy.created_at
-        }
+          created_at: newPolicy.created_at,
+        },
       });
-
     } catch (error) {
-      console.error("Error confirming policy data:", error);
-      
+      console.error("=== CONFIRM POLICY ERROR ===");
+      console.error("Error details:", error);
+      console.error("Stack trace:", error.stack);
+
       if (error.code === "23505") {
-        // Unique violation
         res.status(400).json({ error: "Policy number already exists" });
       } else {
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({
+          error: "Internal server error",
+          message: error.message,
+        });
       }
     }
   }
@@ -217,26 +271,28 @@ class PolicyController {
     const insurance_company_id = req.user.id;
 
     try {
-      const result = await db.pool.query(`
+      const result = await db.pool.query(
+        `
         SELECT temp_id, original_filename, structured_data, confidence_score, created_at
         FROM policy_extractions 
         WHERE insurance_company_id = $1 AND extraction_status = 'pending_review'
         ORDER BY created_at DESC
-      `, [insurance_company_id]);
+      `,
+        [insurance_company_id]
+      );
 
-      const pendingExtractions = result.rows.map(row => ({
+      const pendingExtractions = result.rows.map((row) => ({
         temp_id: row.temp_id,
         filename: row.original_filename,
         extracted_data: JSON.parse(row.structured_data),
         confidence_score: row.confidence_score,
-        created_at: row.created_at
+        created_at: row.created_at,
       }));
 
       res.status(200).json({
         pending_extractions: pendingExtractions,
-        count: pendingExtractions.length
+        count: pendingExtractions.length,
       });
-
     } catch (error) {
       console.error("Error fetching pending extractions:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -246,69 +302,44 @@ class PolicyController {
   // Get all policies for an insurance company
   async getPolicies(req, res) {
     const insurance_company_id = req.user.id;
-    const { page = 1, limit = 10, status, type } = req.query;
+    console.log("=== GET POLICIES DEBUG ===");
+    console.log("Requesting user ID:", insurance_company_id);
+    console.log("Full user object:", req.user);
 
     try {
-      let query = `
-        SELECT id, policy_number, policy_holder_name, policy_holder_email,
-               policy_type, coverage_amount, premium_amount, policy_start_date,
-               policy_end_date, policy_status, kora_policy_id, extraction_confidence,
-               policy_document_filename, created_at
-        FROM policies 
-        WHERE insurance_company_id = $1
-      `;
-      let queryParams = [insurance_company_id];
-      let paramCount = 1;
+      // First, let's see ALL policies regardless of insurance_company_id
+      const allPoliciesResult = await db.pool.query(
+        "SELECT id, policy_number, insurance_company_id FROM policies"
+      );
+      console.log("All policies in database:", allPoliciesResult.rows);
 
-      // Add filters
-      if (status) {
-        paramCount++;
-        query += ` AND policy_status = $${paramCount}`;
-        queryParams.push(status);
-      }
+      // Now the filtered query
+      const result = await db.pool.query(
+        `SELECT id, policy_number, policy_holder_name, policy_holder_email,
+                policy_type, coverage_amount, premium_amount, policy_start_date,
+                policy_end_date, policy_status, kora_policy_id, extraction_confidence,
+                policy_document_filename, created_at, insurance_company_id
+         FROM policies 
+         WHERE insurance_company_id = $1
+         ORDER BY created_at DESC`,
+        [insurance_company_id]
+      );
 
-      if (type) {
-        paramCount++;
-        query += ` AND policy_type = $${paramCount}`;
-        queryParams.push(type);
-      }
-
-      // Add pagination
-      query += ` ORDER BY created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
-      queryParams.push(limit, (page - 1) * limit);
-
-      const result = await db.pool.query(query, queryParams);
-
-      // Get total count for pagination
-      let countQuery = "SELECT COUNT(*) FROM policies WHERE insurance_company_id = $1";
-      let countParams = [insurance_company_id];
-      let countParamCount = 1;
-
-      if (status) {
-        countParamCount++;
-        countQuery += ` AND policy_status = $${countParamCount}`;
-        countParams.push(status);
-      }
-
-      if (type) {
-        countParamCount++;
-        countQuery += ` AND policy_type = $${countParamCount}`;
-        countParams.push(type);
-      }
-
-      const countResult = await db.pool.query(countQuery, countParams);
-      const totalPolicies = parseInt(countResult.rows[0].count);
+      console.log(
+        "Filtered policies for company",
+        insurance_company_id,
+        ":",
+        result.rows
+      );
+      console.log("Number of policies found:", result.rows.length);
 
       res.status(200).json({
         policies: result.rows,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: Math.ceil(totalPolicies / limit),
-          total_policies: totalPolicies,
-          per_page: parseInt(limit)
-        }
+        debug: {
+          requesting_company_id: insurance_company_id,
+          total_policies_found: result.rows.length,
+        },
       });
-
     } catch (error) {
       console.error("Error fetching policies:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -321,24 +352,26 @@ class PolicyController {
     const insurance_company_id = req.user.id;
 
     try {
-      const result = await db.pool.query(`
+      const result = await db.pool.query(
+        `
         SELECT * FROM policies 
         WHERE id = $1 AND insurance_company_id = $2
-      `, [id, insurance_company_id]);
+      `,
+        [id, insurance_company_id]
+      );
 
       if (result.rows.length === 0) {
         return res.status(404).json({ error: "Policy not found" });
       }
 
       const policy = result.rows[0];
-      
+
       // Parse additional_info if it exists
       if (policy.additional_info) {
         policy.additional_info = JSON.parse(policy.additional_info);
       }
 
       res.status(200).json({ policy: policy });
-
     } catch (error) {
       console.error("Error fetching policy:", error);
       res.status(500).json({ error: "Internal server error" });

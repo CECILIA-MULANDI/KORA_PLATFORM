@@ -15,6 +15,7 @@ export default function PolicyUpload() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [error, setError] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editableData, setEditableData] = useState<any>({});
 
   const handleFileSelect = (selectedFile: File) => {
     const allowedTypes = [
@@ -52,6 +53,13 @@ export default function PolicyUpload() {
       formData.append("policy_document", file);
 
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      console.log("Upload token:", token ? "Present" : "Missing");
+      console.log("File details:", {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      });
+
       const response = await fetch(`${API_URL}/policies/upload`, {
         method: "POST",
         headers: {
@@ -61,16 +69,77 @@ export default function PolicyUpload() {
       });
 
       const data = await response.json();
+      console.log("Upload response:", response.status, data);
 
       if (response.ok) {
         setResult(data);
+        setEditableData({
+          ...data.extracted_data,
+          temp_id: data.temp_id,
+        });
       } else {
-        setError(data.message || "Upload failed");
+        console.error("Upload failed:", data);
+        setError(data.message || data.error || "Upload failed");
       }
     } catch (err) {
+      console.error("Upload error:", err);
       setError("Network error. Please try again.");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleConfirmPolicy = async () => {
+    try {
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+
+      console.log("Sending confirmation with temp_id:", editableData.temp_id);
+      console.log("Corrections data:", editableData);
+
+      const response = await fetch(`${API_URL}/policies/confirm`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          temp_id: editableData.temp_id,
+          corrections: {
+            policy_number: editableData.policy_number,
+            policy_holder_name: editableData.policy_holder_name,
+            policy_holder_email: editableData.policy_holder_email,
+            policy_holder_phone: editableData.policy_holder_phone,
+            policy_type: editableData.policy_type,
+            coverage_amount: editableData.coverage_amount,
+            premium_amount: editableData.premium_amount,
+            deductible_amount: editableData.deductible_amount,
+            policy_start_date: editableData.policy_start_date,
+            policy_end_date: editableData.policy_end_date,
+          },
+        }),
+      });
+
+      const responseData = await response.json();
+      console.log("Response:", responseData);
+
+      if (response.ok) {
+        alert("Policy confirmed and saved successfully!");
+        setResult(null);
+        setFile(null);
+        setEditableData({});
+        // Refresh the page to show updated lists
+        window.location.reload();
+      } else {
+        console.error("Backend error:", responseData);
+        alert(
+          `Failed to confirm policy: ${
+            responseData.message || responseData.error || "Unknown error"
+          }`
+        );
+      }
+    } catch (error) {
+      console.error("Error confirming policy:", error);
+      alert("Error confirming policy");
     }
   };
 
@@ -153,20 +222,193 @@ export default function PolicyUpload() {
         <div className="mt-6 border-t pt-6">
           <h3 className="text-lg font-medium mb-4">Extracted Data</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(result.extracted_data).map(([key, value]) => (
-              <div key={key} className="border rounded p-3">
-                <div className="text-sm font-medium text-gray-600 capitalize">
-                  {key.replace(/_/g, " ")}
-                </div>
-                <div className="mt-1">
-                  {value ? (
-                    String(value)
-                  ) : (
-                    <span className="text-gray-400 italic">Not found</span>
-                  )}
-                </div>
-              </div>
-            ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Policy Number
+              </label>
+              <input
+                type="text"
+                value={editableData.policy_number || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_number: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Policy Holder Name
+              </label>
+              <input
+                type="text"
+                value={editableData.policy_holder_name || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_holder_name: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                value={editableData.policy_holder_email || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_holder_email: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Phone
+              </label>
+              <input
+                type="text"
+                value={editableData.policy_holder_phone || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_holder_phone: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Policy Type
+              </label>
+              <input
+                type="text"
+                value={editableData.policy_type || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_type: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Coverage Amount
+              </label>
+              <input
+                type="number"
+                value={editableData.coverage_amount || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    coverage_amount: parseFloat(e.target.value),
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Premium Amount
+              </label>
+              <input
+                type="number"
+                value={editableData.premium_amount || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    premium_amount: parseFloat(e.target.value),
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Deductible Amount
+              </label>
+              <input
+                type="number"
+                value={editableData.deductible_amount || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    deductible_amount: parseFloat(e.target.value),
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Policy Start Date
+              </label>
+              <input
+                type="date"
+                value={editableData.policy_start_date || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_start_date: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                Policy End Date
+              </label>
+              <input
+                type="date"
+                value={editableData.policy_end_date || ""}
+                onChange={(e) =>
+                  setEditableData({
+                    ...editableData,
+                    policy_end_date: e.target.value,
+                  })
+                }
+                className="w-full border rounded p-2"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end space-x-3">
+            <button
+              onClick={() => {
+                setResult(null);
+                setEditableData({});
+              }}
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmPolicy}
+              className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              Confirm & Save Policy
+            </button>
           </div>
         </div>
       )}

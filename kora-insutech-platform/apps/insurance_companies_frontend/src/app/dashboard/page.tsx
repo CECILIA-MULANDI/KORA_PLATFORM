@@ -1,12 +1,16 @@
 "use client";
-import { useState } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import PolicyUpload from "../components/PolicyUpload";
 import { useAuth } from "../contexts/AuthContext";
+import PendingExtractions from "../components/PendingExtractions";
+import PoliciesList from "../components/PoliciesList";
+import { useState } from "react";
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const [showUpload, setShowUpload] = useState(false);
+  const { user } = useAuth(); // Add this line to get user from context
+  const [showUpload, setShowUpload] = useState(false); // Add this for upload toggle
+
+  console.log("Dashboard component rendering");
 
   return (
     <DashboardLayout>
@@ -44,6 +48,12 @@ const Dashboard = () => {
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-6">
+              <PendingExtractions />
+              {console.log("About to render PoliciesList")}
+              <PoliciesList />
             </div>
 
             {/* Quick Actions */}

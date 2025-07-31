@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { AUTH_TOKEN_KEY } from "../constants/constant";
 
 interface PendingExtraction {
   temp_id: string;
@@ -12,6 +13,38 @@ interface PendingExtraction {
 export default function PendingExtractions() {
   const [extractions, setExtractions] = useState<PendingExtraction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedExtraction, setSelectedExtraction] =
+    useState<PendingExtraction | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const handleReview = (extraction: PendingExtraction) => {
+    setSelectedExtraction(extraction);
+    setShowReviewModal(true);
+  };
+
+  const handleConfirm = async (tempId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3001/api/policies/confirm",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ temp_id: tempId }),
+        }
+      );
+
+      if (response.ok) {
+        // Refresh the list
+        fetchPendingExtractions();
+      }
+    } catch (err) {
+      console.error("Failed to confirm policy:", err);
+    }
+  };
 
   useEffect(() => {
     fetchPendingExtractions();
@@ -19,26 +52,31 @@ export default function PendingExtractions() {
 
   const fetchPendingExtractions = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/policies/pending-extractions', {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const response = await fetch(
+        "http://localhost:3001/api/policies/pending-extractions",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
         setExtractions(data.extractions || []);
       }
     } catch (err) {
-      console.error('Failed to fetch pending extractions:', err);
+      console.error("Failed to fetch pending extractions:", err);
     } finally {
       setLoading(false);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-8">Loading pending extractions...</div>;
+    return (
+      <div className="text-center py-8">Loading pending extractions...</div>
+    );
   }
 
   if (extractions.length === 0) {
@@ -57,7 +95,7 @@ export default function PendingExtractions() {
       <div className="px-6 py-4 border-b">
         <h2 className="text-xl font-semibold">Pending Extractions</h2>
       </div>
-      
+
       <div className="divide-y">
         {extractions.map((extraction) => (
           <div key={extraction.temp_id} className="p-6">
@@ -68,39 +106,49 @@ export default function PendingExtractions() {
                   {new Date(extraction.created_at).toLocaleDateString()}
                 </div>
               </div>
-              <div className={`px-3 py-1 rounded-full text-sm ${
-                extraction.confidence_score >= 80 
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              }`}>
+              <div
+                className={`px-3 py-1 rounded-full text-sm ${
+                  extraction.confidence_score >= 80
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
                 {extraction.confidence_score}% Confidence
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="font-medium">Policy #:</span>
-                <div>{extraction.structured_data.policy_number || 'N/A'}</div>
+                <div>{extraction.structured_data.policy_number || "N/A"}</div>
               </div>
               <div>
                 <span className="font-medium">Holder:</span>
-                <div>{extraction.structured_data.policy_holder_name || 'N/A'}</div>
+                <div>
+                  {extraction.structured_data.policy_holder_name || "N/A"}
+                </div>
               </div>
               <div>
                 <span className="font-medium">Type:</span>
-                <div>{extraction.structured_data.policy_type || 'N/A'}</div>
+                <div>{extraction.structured_data.policy_type || "N/A"}</div>
               </div>
               <div>
                 <span className="font-medium">Coverage:</span>
-                <div>{extraction.structured_data.coverage_amount || 'N/A'}</div>
+                <div>{extraction.structured_data.coverage_amount || "N/A"}</div>
               </div>
             </div>
-            
+
             <div className="mt-4 flex justify-end space-x-2">
-              <button className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50">
+              <button
+                onClick={() => handleReview(extraction)}
+                className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              >
                 Review
               </button>
-              <button className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700">
+              <button
+                onClick={() => handleConfirm(extraction.temp_id)}
+                className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              >
                 Confirm
               </button>
             </div>
