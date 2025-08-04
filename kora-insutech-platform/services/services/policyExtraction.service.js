@@ -146,6 +146,37 @@ class PolicyExtractionService {
       return filePath;
     }
   }
+  cleanExtractedName(name) {
+    if (!name) return null;
+
+    // Remove common trailing phrases that get picked up
+    const cleanPatterns = [
+      /\s+Period\s+of\s+Insurance.*$/i,
+      /\s+Policy\s+Period.*$/i,
+      /\s+Insurance\s+Period.*$/i,
+      /\s+Coverage\s+Period.*$/i,
+      /\s+From\s+\d+.*$/i,
+      /\s+\d{2}\/\d{2}\/\d{4}.*$/i,
+      /\s+\d{2}:\d{2}.*$/i,
+      /\s+Hrs\s+on.*$/i,
+    ];
+
+    let cleaned = name.trim();
+
+    cleanPatterns.forEach((pattern) => {
+      cleaned = cleaned.replace(pattern, "");
+    });
+
+    // Remove extra whitespace and limit length
+    cleaned = cleaned.replace(/\s+/g, " ").trim();
+
+    // Ensure reasonable name length
+    if (cleaned.length > 50) {
+      cleaned = cleaned.substring(0, 50).trim();
+    }
+
+    return cleaned || null;
+  }
 
   // Use AI to structure extracted text into policy data
   async structureTextWithAI(extractedText) {
@@ -259,12 +290,12 @@ Return format:
           /Policy\s*\/?\s*Certificate\s*No\.?\s*:?\s*([0-9]{10,15})/i
         ) || this.extractWithRegex(text, /([0-9]{12,15})/), // Long number sequences
 
-      policy_holder_name:
+      policy_holder_name: this.cleanExtractedName(
         this.extractWithRegex(
           text,
           /Name\s*of\s*Insured\s*:?\s*(MR\.?\s*[A-Z\s]+)/i
-        ) || this.extractWithRegex(text, /Insured\s*:?\s*(MR\.?\s*[A-Z\s]+)/i),
-
+        ) || this.extractWithRegex(text, /Insured\s*:?\s*(MR\.?\s*[A-Z\s]+)/i)
+      ),
       policy_holder_email: this.extractWithRegex(
         text,
         /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/

@@ -284,7 +284,10 @@ class PolicyController {
       const pendingExtractions = result.rows.map((row) => ({
         temp_id: row.temp_id,
         filename: row.original_filename,
-        extracted_data: JSON.parse(row.structured_data),
+        extracted_data:
+          typeof row.structured_data === "string"
+            ? JSON.parse(row.structured_data)
+            : row.structured_data,
         confidence_score: row.confidence_score,
         created_at: row.created_at,
       }));
