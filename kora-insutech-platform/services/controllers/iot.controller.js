@@ -56,7 +56,7 @@ class IoTController {
           "tracker", // Default type
           koraDeviceId,
           policy_id || null,
-          policy_id ? "CURRENT_TIMESTAMP" : null,
+          policy_id ? new Date() : null,
         ]
       );
 
@@ -144,11 +144,9 @@ class IoTController {
       );
 
       if (policyCheck.rows.length === 0) {
-        return res
-          .status(404)
-          .json({
-            error: "Policy not found or doesn't belong to your company",
-          });
+        return res.status(404).json({
+          error: "Policy not found or doesn't belong to your company",
+        });
       }
 
       const policy = policyCheck.rows[0];

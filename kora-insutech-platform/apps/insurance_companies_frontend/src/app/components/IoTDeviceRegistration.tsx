@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { AUTH_TOKEN_KEY } from "../constants/constant";
 
 interface IoTDevice {
   id: number;
@@ -49,12 +50,15 @@ const IoTDeviceRegistration: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
 
       // Load devices
-      const devicesResponse = await fetch("/api/iot/devices", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const devicesResponse = await fetch(
+        "http://localhost:3001/api/iot/devices",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       if (devicesResponse.ok) {
         const devicesData = await devicesResponse.json();
@@ -62,9 +66,12 @@ const IoTDeviceRegistration: React.FC = () => {
       }
 
       // Load available policies for linking
-      const policiesResponse = await fetch("/api/iot/policies/available", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const policiesResponse = await fetch(
+        "http://localhost:3001/api/iot/policies/available",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       if (policiesResponse.ok) {
         const policiesData = await policiesResponse.json();
@@ -83,15 +90,18 @@ const IoTDeviceRegistration: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/iot/devices/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newDevice),
-      });
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const response = await fetch(
+        "http://localhost:3001/api/iot/devices/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(newDevice),
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -120,15 +130,18 @@ const IoTDeviceRegistration: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/iot/devices/link", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(linkForm),
-      });
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const response = await fetch(
+        "http://localhost:3001/api/iot/devices/link",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(linkForm),
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -159,13 +172,16 @@ const IoTDeviceRegistration: React.FC = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/iot/devices/${deviceId}/unlink`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const response = await fetch(
+        `http://localhost:3001/api/iot/devices/${deviceId}/unlink`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.ok) {
         alert("Device successfully unlinked from policy");

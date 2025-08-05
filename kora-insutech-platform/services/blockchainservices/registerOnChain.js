@@ -42,3 +42,33 @@ export async function registerOnChain(insurerId) {
     return { success: false, error: error.message };
   }
 }
+
+// Register IoT device on blockchain
+export async function registerIoTDeviceOnChain(koraDeviceId, deviceType) {
+  try {
+    console.log(
+      "🔗 Attempting IoT device blockchain registration for:",
+      koraDeviceId
+    );
+
+    // For now, we'll use a simple approach - you can extend the smart contract later
+    // to have specific IoT device registration functions
+    console.log(
+      "📱 IoT Device registered locally, blockchain integration pending"
+    );
+
+    // TODO: Implement actual smart contract function for IoT devices
+    // const tx = await contract.registerIoTDevice(koraDeviceId, deviceType);
+    // const receipt = await tx.wait();
+    // return { success: true, txHash: receipt.hash || tx.hash };
+
+    return {
+      success: true,
+      txHash: "pending_iot_implementation",
+      message: "IoT device registered locally, blockchain integration pending",
+    };
+  } catch (error) {
+    console.error("❌ IoT device on-chain registration failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
