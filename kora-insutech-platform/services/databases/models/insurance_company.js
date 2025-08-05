@@ -188,65 +188,6 @@ const createTables = {
     CREATE INDEX IF NOT EXISTS idx_incidents_timestamp ON incident_alerts(incident_timestamp);
     CREATE INDEX IF NOT EXISTS idx_incidents_kora_id ON incident_alerts(kora_incident_id);
   `,
-
-  automatic_claims: `
-    -- Create automatic claims table for IoT-generated insurance claims
-    CREATE TABLE IF NOT EXISTS automatic_claims (
-      id SERIAL PRIMARY KEY,
-      claim_id VARCHAR(100) UNIQUE NOT NULL,
-
-      -- References
-      incident_id INTEGER NOT NULL REFERENCES incident_alerts(id) ON DELETE CASCADE,
-      policy_id INTEGER NOT NULL REFERENCES policies(id) ON DELETE CASCADE,
-      device_id INTEGER NOT NULL REFERENCES iot_devices(id) ON DELETE CASCADE,
-
-      -- Claim details
-      claim_type VARCHAR(100) NOT NULL, -- 'collision', 'theft', 'property_damage', etc.
-      claim_status VARCHAR(50) DEFAULT 'pending_review', -- 'pending_review', 'approved', 'denied', 'investigating', 'settled'
-
-      -- Damage assessment (AI-generated estimates)
-      estimated_damage_amount DECIMAL(15,2),
-      damage_description TEXT,
-      damage_severity VARCHAR(20), -- 'minor', 'moderate', 'major', 'total_loss'
-
-      -- Evidence from IoT
-      sensor_evidence JSONB, -- Accelerometer data, GPS, speed, etc.
-      location_evidence JSONB, -- Exact location, nearby landmarks
-      timestamp_evidence TIMESTAMP WITH TIME ZONE NOT NULL,
-
-      -- AI confidence and processing
-      ai_confidence_score INTEGER, -- 0-100
-      auto_approval_eligible BOOLEAN DEFAULT FALSE,
-      requires_human_review BOOLEAN DEFAULT TRUE,
-
-      -- Processing workflow
-      reviewed_by INTEGER REFERENCES insurance_company(id),
-      reviewed_at TIMESTAMP WITH TIME ZONE,
-      review_notes TEXT,
-
-      -- Settlement
-      approved_amount DECIMAL(15,2),
-      settlement_date TIMESTAMP WITH TIME ZONE,
-      settlement_method VARCHAR(50), -- 'direct_deposit', 'check', 'repair_authorization'
-
-      -- Blockchain integration
-      kora_claim_id UUID UNIQUE NOT NULL DEFAULT uuid_generate_v4(),
-      blockchain_recorded BOOLEAN DEFAULT FALSE,
-      blockchain_tx_hash VARCHAR(255),
-
-      -- Metadata
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- Create indexes
-    CREATE INDEX IF NOT EXISTS idx_claims_incident ON automatic_claims(incident_id);
-    CREATE INDEX IF NOT EXISTS idx_claims_policy ON automatic_claims(policy_id);
-    CREATE INDEX IF NOT EXISTS idx_claims_device ON automatic_claims(device_id);
-    CREATE INDEX IF NOT EXISTS idx_claims_status ON automatic_claims(claim_status);
-    CREATE INDEX IF NOT EXISTS idx_claims_timestamp ON automatic_claims(timestamp_evidence);
-    CREATE INDEX IF NOT EXISTS idx_claims_kora_id ON automatic_claims(kora_claim_id);
-  `,
 };
 
 export { createTables };

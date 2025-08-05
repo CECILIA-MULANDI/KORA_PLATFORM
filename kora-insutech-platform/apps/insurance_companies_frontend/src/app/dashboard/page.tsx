@@ -4,11 +4,13 @@ import PolicyUpload from "../components/PolicyUpload";
 import { useAuth } from "../contexts/AuthContext";
 import PendingExtractions from "../components/PendingExtractions";
 import PoliciesList from "../components/PoliciesList";
+import IoTDeviceRegistration from "../components/IoTDeviceRegistration";
 import { useState } from "react";
 
 const Dashboard = () => {
   const { user } = useAuth(); // Add this line to get user from context
   const [showUpload, setShowUpload] = useState(false); // Add this for upload toggle
+  const [showIoT, setShowIoT] = useState(false); // Add this for IoT toggle
 
   console.log("Dashboard component rendering");
 
@@ -57,7 +59,7 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -119,6 +121,38 @@ const Dashboard = () => {
                 </button>
               </div>
 
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-6 text-white">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-8 w-8"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium">IoT Devices</h3>
+                    <p className="text-orange-100 text-sm">
+                      Manage tracking devices
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowIoT(!showIoT)}
+                  className="mt-4 bg-white text-orange-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-orange-50 transition"
+                >
+                  {showIoT ? "Hide Devices" : "Manage Devices"}
+                </button>
+              </div>
+
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
@@ -153,6 +187,13 @@ const Dashboard = () => {
             {showUpload && (
               <div className="mt-8">
                 <PolicyUpload />
+              </div>
+            )}
+
+            {/* IoT Device Management Section - Shows when button is clicked */}
+            {showIoT && (
+              <div className="mt-8">
+                <IoTDeviceRegistration />
               </div>
             )}
 

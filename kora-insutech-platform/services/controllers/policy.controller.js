@@ -96,7 +96,7 @@ class PolicyController {
 
   // Confirm and save extracted policy data
   async confirmPolicyData(req, res) {
-    const { temp_id, corrections } = req.body;
+    const { temp_id, corrections, iot_device_serial } = req.body;
     const insurance_company_id = req.user.id;
 
     console.log("=== CONFIRM POLICY DEBUG ===");
