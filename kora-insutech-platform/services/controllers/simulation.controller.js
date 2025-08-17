@@ -1,6 +1,6 @@
-import IoTDataReader from '../iot-simulation/dataReader.js';
-import AnomalyDetector from '../anomaly/anomalyDetector.js';
-import db from '../databases/db_connection.js';
+import IoTDataReader from "../iot-simulation/dataReader.js";
+import AnomalyDetector from "../anomaly/anomalyDetector.js";
+import db from "../databases/db_connection.js";
 
 class SimulationController {
   constructor() {
@@ -14,18 +14,18 @@ class SimulationController {
     try {
       const stats = this.dataReader.getDataStats();
       const anomalies = this.dataReader.getAllAnomalies();
-      
+
       res.json({
         message: "IoT data statistics",
         stats: stats,
-        sample_anomalies: anomalies.slice(0, 5).map(point => ({
+        sample_anomalies: anomalies.slice(0, 5).map((point) => ({
           timestamp: new Date(point.timestamp * 1000).toISOString(),
           speed_kmh: point.speed_kmh,
           location: {
             latitude: point.latitude,
-            longitude: point.longitude
-          }
-        }))
+            longitude: point.longitude,
+          },
+        })),
       });
     } catch (error) {
       console.error("Error getting data stats:", error);
@@ -50,8 +50,8 @@ class SimulationController {
       );
 
       if (deviceCheck.rows.length === 0) {
-        return res.status(404).json({ 
-          error: "Device not found or doesn't belong to your company" 
+        return res.status(404).json({
+          error: "Device not found or doesn't belong to your company",
         });
       }
 
@@ -62,18 +62,18 @@ class SimulationController {
 
       // Start new data stream
       const streamInterval = this.dataReader.startDataStream(
-        deviceId, 
-        intervalMs, 
+        deviceId,
+        intervalMs,
         async (iotData) => {
           console.log(`📊 Device ${deviceId} data:`, {
             speed: iotData.speed_kmh,
             location: iotData.location,
-            timestamp: new Date(iotData.timestamp * 1000).toISOString()
+            timestamp: new Date(iotData.timestamp * 1000).toISOString(),
           });
 
           // Check for anomalies
           const anomaly = await this.anomalyDetector.detectAnomaly(iotData);
-          
+
           if (anomaly) {
             console.log(`🚨 Anomaly processed for device ${deviceId}`);
           }
@@ -87,9 +87,8 @@ class SimulationController {
         message: `IoT simulation started for device ${deviceId}`,
         deviceId: deviceId,
         intervalMs: intervalMs,
-        device_info: deviceCheck.rows[0]
+        device_info: deviceCheck.rows[0],
       });
-
     } catch (error) {
       console.error("Error starting device simulation:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -104,14 +103,14 @@ class SimulationController {
       if (this.activeStreams.has(deviceId)) {
         clearInterval(this.activeStreams.get(deviceId));
         this.activeStreams.delete(deviceId);
-        
+
         res.json({
           message: `IoT simulation stopped for device ${deviceId}`,
-          deviceId: deviceId
+          deviceId: deviceId,
         });
       } else {
         res.status(404).json({
-          error: `No active simulation found for device ${deviceId}`
+          error: `No active simulation found for device ${deviceId}`,
         });
       }
     } catch (error) {
@@ -136,14 +135,14 @@ class SimulationController {
       );
 
       if (deviceCheck.rows.length === 0) {
-        return res.status(404).json({ 
-          error: "Device not found or doesn't belong to your company" 
+        return res.status(404).json({
+          error: "Device not found or doesn't belong to your company",
         });
       }
 
       // Get random data point
       const iotData = this.dataReader.getRandomDataPoint(deviceId);
-      
+
       // Check for anomaly
       const anomaly = await this.anomalyDetector.detectAnomaly(iotData);
 
@@ -155,11 +154,10 @@ class SimulationController {
           speed_kmh: iotData.speed_kmh,
           location: iotData.location,
           anomaly_detected: !!anomaly,
-          anomaly_details: anomaly
+          anomaly_details: anomaly,
         },
-        device_info: deviceCheck.rows[0]
+        device_info: deviceCheck.rows[0],
       });
-
     } catch (error) {
       console.error("Error getting test data point:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -170,11 +168,11 @@ class SimulationController {
   async getActiveSimulations(req, res) {
     try {
       const activeDevices = Array.from(this.activeStreams.keys());
-      
+
       res.json({
         message: "Active IoT simulations",
         active_devices: activeDevices,
-        total_active: activeDevices.length
+        total_active: activeDevices.length,
       });
     } catch (error) {
       console.error("Error getting active simulations:", error);
@@ -189,7 +187,7 @@ class SimulationController {
     try {
       const incidents = await db.pool.query(
         `SELECT i.*, d.device_id, p.policy_number, p.policy_holder_name
-         FROM iot_incidents i
+         FROM incident_alerts i
          JOIN iot_devices d ON i.device_id = d.id
          LEFT JOIN policies p ON i.policy_id = p.id
          WHERE p.insurance_company_id = $1
@@ -200,7 +198,7 @@ class SimulationController {
 
       res.json({
         message: "Recent IoT incidents",
-        incidents: incidents.rows.map(incident => ({
+        incidents: incidents.rows.map((incident) => ({
           incident_id: incident.incident_id,
           device_id: incident.device_id,
           policy_number: incident.policy_number,
@@ -211,10 +209,9 @@ class SimulationController {
           location: incident.location_data,
           data: incident.incident_data,
           blockchain_tx: incident.blockchain_tx_hash,
-          created_at: incident.created_at
-        }))
+          created_at: incident.created_at,
+        })),
       });
-
     } catch (error) {
       console.error("Error getting recent incidents:", error);
       res.status(500).json({ error: "Internal server error" });

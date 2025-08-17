@@ -114,9 +114,9 @@ class AnomalyDetector {
 
       // Insert anomaly record
       const result = await db.pool.query(
-        `INSERT INTO iot_incidents (
+        `INSERT INTO incident_alerts (
           incident_id, device_id, policy_id, incident_type, severity_level,
-          incident_timestamp, location_data, incident_data, 
+          incident_timestamp, incident_location, sensor_data,
           blockchain_tx_hash, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
         RETURNING *`,

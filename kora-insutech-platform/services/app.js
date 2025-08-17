@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.use(
   cors({
-    origin: "http://localhost:3000", // allow React frontend
+    origin: ["http://localhost:3000", "http://localhost:3002"], // allow React frontends
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     credentials: true,
   })
@@ -28,12 +28,12 @@ app.use(
 // Serve uploaded files statically
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Routes
+// Routes - Order matters! Public routes first
+app.use("/api", koraRoutes); // Public KORA transparency routes (must be first)
 app.use("/api", insurerRoutes);
 app.use("/api", policyRoutes);
 app.use("/api", iotRoutes);
 app.use("/api", simulationRoutes);
-app.use("/api", koraRoutes); // Public KORA transparency routes
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
