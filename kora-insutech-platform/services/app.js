@@ -5,6 +5,8 @@ import { fileURLToPath } from "url";
 import insurerRoutes from "./routes/insurance.routes.js";
 import policyRoutes from "./routes/policy.routes.js";
 import iotRoutes from "./routes/iot.routes.js";
+import simulationRoutes from "./routes/simulation.routes.js";
+import koraRoutes from "./routes/kora.routes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +32,8 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", insurerRoutes);
 app.use("/api", policyRoutes);
 app.use("/api", iotRoutes);
+app.use("/api", simulationRoutes);
+app.use("/api", koraRoutes); // Public KORA transparency routes
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

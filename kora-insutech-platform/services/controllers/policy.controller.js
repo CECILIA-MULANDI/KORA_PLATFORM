@@ -5,6 +5,8 @@ import {
   getFileInfo,
   deleteUploadedFile,
 } from "../middleware/upload.middleware.js";
+import { registerPolicyHashOnChain } from "../blockchainservices/registerOnChain.js";
+import { readFileSync } from "fs";
 
 class PolicyController {
   // Upload and extract policy data from document
@@ -230,6 +232,42 @@ class PolicyController {
       );
 
       console.log(`✅ Policy confirmed and saved: ${policyData.policy_number}`);
+
+      // Register policy hash on blockchain for integrity verification
+      try {
+        const pdfBuffer = readFileSync(extractionData.file_path);
+        const blockchainResult = await registerPolicyHashOnChain(
+          {
+            policyNumber: newPolicy.policy_number,
+            customerName: newPolicy.policy_holder_name,
+            coverageAmount: newPolicy.coverage_amount,
+            deductible: newPolicy.deductible_amount,
+            policyType: newPolicy.policy_type,
+            insuranceCompany: req.user.company_name || "Unknown Company",
+          },
+          pdfBuffer
+        );
+
+        if (blockchainResult.success) {
+          console.log(
+            `🔗 Policy hash registered on blockchain: ${blockchainResult.txHash}`
+          );
+          // Optionally store blockchain info in database
+          await db.pool.query(
+            "UPDATE policies SET blockchain_tx_hash = $1, blockchain_registered = true WHERE id = $2",
+            [blockchainResult.txHash, newPolicy.id]
+          );
+        } else {
+          console.log(
+            `⚠️ Blockchain registration failed: ${blockchainResult.error}`
+          );
+        }
+      } catch (blockchainError) {
+        console.log(
+          `⚠️ Blockchain registration error: ${blockchainError.message}`
+        );
+        // Don't fail the entire policy creation if blockchain fails
+      }
 
       res.status(201).json({
         message: "Policy created successfully from document",

@@ -65,11 +65,11 @@ class IoTController {
       // Register device on blockchain
       console.log(
         "🔗 Starting blockchain registration for IoT device:",
-        koraDeviceId
+        serial_number
       );
       const onChainResult = await registerIoTDeviceOnChain(
-        koraDeviceId,
-        "tracker"
+        serial_number,
+        policy_id || ""
       );
 
       if (onChainResult.success) {
@@ -201,7 +201,8 @@ class IoTController {
 
   // Unlink IoT device from policy
   async unlinkDeviceFromPolicy(req, res) {
-    const { device_id } = req.params;
+    const { deviceId } = req.params;
+    const device_id = deviceId; // Match route parameter name
     const insurance_company_id = req.user.id;
 
     try {

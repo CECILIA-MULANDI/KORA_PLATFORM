@@ -44,31 +44,83 @@ export async function registerOnChain(insurerId) {
 }
 
 // Register IoT device on blockchain
-export async function registerIoTDeviceOnChain(koraDeviceId, deviceType) {
+export async function registerIoTDeviceOnChain(deviceId, policyId = "") {
   try {
     console.log(
       "🔗 Attempting IoT device blockchain registration for:",
-      koraDeviceId
+      deviceId
     );
+    console.log("🔗 Policy ID:", policyId || "No policy linked");
 
-    // For now, we'll use a simple approach - you can extend the smart contract later
-    // to have specific IoT device registration functions
-    console.log(
-      "📱 IoT Device registered locally, blockchain integration pending"
-    );
+    // Call the actual smart contract function
+    const tx = await contract.registerIoTDevice(deviceId, policyId);
+    console.log("📝 IoT Device transaction sent:", tx.hash);
 
-    // TODO: Implement actual smart contract function for IoT devices
-    // const tx = await contract.registerIoTDevice(koraDeviceId, deviceType);
-    // const receipt = await tx.wait();
-    // return { success: true, txHash: receipt.hash || tx.hash };
+    const receipt = await tx.wait();
+    console.log("✅ IoT Device transaction confirmed. Hash:", tx.hash);
 
+    const txHash = receipt.hash || tx.hash;
     return {
       success: true,
-      txHash: "pending_iot_implementation",
-      message: "IoT device registered locally, blockchain integration pending",
+      txHash: txHash,
+      message: "IoT device successfully registered on blockchain",
     };
   } catch (error) {
     console.error("❌ IoT device on-chain registration failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+// Register policy hash on blockchain (privacy-preserving)
+export async function registerPolicyHashOnChain(policyData, pdfBuffer) {
+  try {
+    console.log(
+      "🔗 Attempting policy hash blockchain registration for:",
+      policyData.policyNumber
+    );
+
+    // Create hash of sensitive policy data (for integrity verification)
+    const dataString = JSON.stringify({
+      policyNumber: policyData.policyNumber,
+      customerName: policyData.customerName,
+      coverageAmount: policyData.coverageAmount,
+      deductible: policyData.deductible,
+      policyType: policyData.policyType,
+      // Add other sensitive fields that need integrity protection
+    });
+    const dataHash = ethers.keccak256(ethers.toUtf8Bytes(dataString));
+
+    // Create hash of original PDF document
+    const documentHash = ethers.keccak256(pdfBuffer);
+
+    console.log("📝 Policy data hash:", dataHash);
+    console.log("📄 Document hash:", documentHash);
+
+    // Call the actual smart contract function
+    const tx = await contract.registerPolicyHash(
+      policyData.policyNumber,
+      policyData.insuranceCompany,
+      dataHash,
+      documentHash
+    );
+    console.log("📝 Policy hash transaction sent:", tx.hash);
+
+    const receipt = await tx.wait();
+    console.log("✅ Policy hash transaction confirmed. Hash:", tx.hash);
+
+    const txHash = receipt.hash || tx.hash;
+    return {
+      success: true,
+      txHash: txHash,
+      dataHash: dataHash,
+      documentHash: documentHash,
+      message: "Policy hash successfully registered on blockchain",
+    };
+  } catch (error) {
+    console.error(
+      "❌ Policy hash on-chain registration failed:",
+      error.message
+    );
     return { success: false, error: error.message };
   }
 }

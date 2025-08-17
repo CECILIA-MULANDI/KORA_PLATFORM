@@ -10,11 +10,55 @@
       {
         "indexed": true,
         "internalType": "string",
+        "name": "_deviceId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "_policyId",
+        "type": "string"
+      }
+    ],
+    "name": "DeviceRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
         "name": "_insurerId",
         "type": "string"
       }
     ],
     "name": "InsurerRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "_policyId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "_insuranceCompany",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "_dataHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PolicyHashRegistered",
     "type": "event"
   },
   {
@@ -31,6 +75,25 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "deviceToPolicy",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -76,6 +139,25 @@
         "type": "string"
       }
     ],
+    "name": "isDeviceRegistered",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
     "name": "isInsurerRegistered",
     "outputs": [
       {
@@ -104,11 +186,101 @@
     "inputs": [
       {
         "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "policyRecords",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "policyId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "insuranceCompany",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "dataHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "documentHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "isActive",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
         "name": "_insurerId",
         "type": "string"
       }
     ],
     "name": "registerInsuranceCompany",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_deviceId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_policyId",
+        "type": "string"
+      }
+    ],
+    "name": "registerIoTDevice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_policyId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_insuranceCompany",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_dataHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_documentHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "registerPolicyHash",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

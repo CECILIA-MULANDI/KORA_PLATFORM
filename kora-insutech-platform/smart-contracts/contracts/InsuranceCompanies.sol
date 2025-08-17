@@ -6,11 +6,25 @@ contract InsuranceCompanies {
     mapping(string => bool) public isInsurerRegistered;
     mapping(string => bool) public isDeviceRegistered;
     mapping(string => string) public deviceToPolicy;
+    mapping(string => PolicyRecord) public policyRecords;
+
     address public owner;
     string[] public insurerIds;
-
+    struct PolicyRecord {
+        string policyId;
+        string insuranceCompany;
+        bytes32 dataHash;
+        bytes32 documentHash;
+        uint256 timestamp;
+        bool isActive;
+    }
     event InsurerRegistered(string indexed _insurerId);
     event DeviceRegistered(string indexed _deviceId, string indexed _policyId);
+    event PolicyHashRegistered(
+        string indexed _policyId,
+        string indexed _insuranceCompany,
+        bytes32 _dataHash
+    );
 
     constructor() {
         owner = msg.sender;
@@ -47,6 +61,29 @@ contract InsuranceCompanies {
         isDeviceRegistered[_deviceId] = true;
         deviceToPolicy[_deviceId] = _policyId;
         emit DeviceRegistered(_deviceId, _policyId);
+    }
+
+    function registerPolicyHash(
+        string calldata _policyId,
+        string calldata _insuranceCompany,
+        bytes32 _dataHash,
+        bytes32 _documentHash
+    ) public onlyOwner {
+        require(
+            bytes(policyRecords[_policyId].policyId).length == 0,
+            "Policy already registered"
+        );
+
+        policyRecords[_policyId] = PolicyRecord({
+            policyId: _policyId,
+            insuranceCompany: _insuranceCompany,
+            dataHash: _dataHash,
+            documentHash: _documentHash,
+            timestamp: block.timestamp,
+            isActive: true
+        });
+
+        emit PolicyHashRegistered(_policyId, _insuranceCompany, _dataHash);
     }
 
     function getAllInsurerIds() public view returns (string[] memory) {
