@@ -7,9 +7,11 @@ contract InsuranceCompanies {
     mapping(string => bool) public isDeviceRegistered;
     mapping(string => string) public deviceToPolicy;
     mapping(string => PolicyRecord) public policyRecords;
+    mapping(string => IncidentRecord) public incidentRecords;
 
     address public owner;
     string[] public insurerIds;
+
     struct PolicyRecord {
         string policyId;
         string insuranceCompany;
@@ -18,11 +20,27 @@ contract InsuranceCompanies {
         uint256 timestamp;
         bool isActive;
     }
+
+    struct IncidentRecord {
+        string incidentId;
+        string deviceId;
+        string incidentType;
+        uint256 timestamp;
+        bytes32 dataHash;
+        string severity;
+        bool isActive;
+    }
     event InsurerRegistered(string indexed _insurerId);
     event DeviceRegistered(string indexed _deviceId, string indexed _policyId);
     event PolicyHashRegistered(
         string indexed _policyId,
         string indexed _insuranceCompany,
+        bytes32 _dataHash
+    );
+    event IncidentRecorded(
+        string indexed _incidentId,
+        string indexed _deviceId,
+        string _incidentType,
         bytes32 _dataHash
     );
 
@@ -88,5 +106,37 @@ contract InsuranceCompanies {
 
     function getAllInsurerIds() public view returns (string[] memory) {
         return insurerIds;
+    }
+
+    function recordIncident(
+        string calldata _incidentId,
+        string calldata _deviceId,
+        string calldata _incidentType,
+        string calldata _severity,
+        bytes32 _dataHash
+    ) public onlyOwner {
+        require(
+            bytes(incidentRecords[_incidentId].incidentId).length == 0,
+            "Incident already recorded"
+        );
+        require(isDeviceRegistered[_deviceId], "Device not registered");
+
+        incidentRecords[_incidentId] = IncidentRecord({
+            incidentId: _incidentId,
+            deviceId: _deviceId,
+            incidentType: _incidentType,
+            timestamp: block.timestamp,
+            dataHash: _dataHash,
+            severity: _severity,
+            isActive: true
+        });
+
+        emit IncidentRecorded(_incidentId, _deviceId, _incidentType, _dataHash);
+    }
+
+    function getIncidentRecord(
+        string calldata _incidentId
+    ) public view returns (IncidentRecord memory) {
+        return incidentRecords[_incidentId];
     }
 }

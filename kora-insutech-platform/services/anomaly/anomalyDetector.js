@@ -73,20 +73,29 @@ class AnomalyDetector {
     return "low";
   }
 
-  // Process detected anomaly
+  // Process detected anomaly - HYBRID APPROACH for real-time + blockchain
   async processAnomaly(anomaly) {
     try {
-      // 1. Save to database
+      // 1. IMMEDIATE: Save to database (0.1s)
+      console.log(
+        `⚡ IMMEDIATE: Saving anomaly to database for device: ${anomaly.deviceId}`
+      );
       const dbResult = await this.saveAnomalyToDatabase(anomaly);
 
-      // 2. Record on blockchain
-      const blockchainResult = await this.recordAnomalyOnBlockchain(anomaly);
+      // 2. IMMEDIATE: Send real-time alert to dashboards (0.1s)
+      console.log(
+        `⚡ IMMEDIATE: Sending real-time alert for device: ${anomaly.deviceId}`
+      );
+      await this.sendImmediateAlert(anomaly, dbResult);
 
-      // 3. Send alerts
-      await this.sendAlerts(anomaly, dbResult, blockchainResult);
+      // 3. ASYNC: Record on blockchain in background (3-6s)
+      console.log(
+        `🔗 ASYNC: Starting blockchain recording for device: ${anomaly.deviceId}`
+      );
+      this.recordAnomalyOnBlockchainAsync(anomaly, dbResult.incident.id);
 
       console.log(
-        `✅ Anomaly processed successfully for device: ${anomaly.deviceId}`
+        `✅ Anomaly processed immediately for device: ${anomaly.deviceId} (blockchain recording in progress)`
       );
     } catch (error) {
       console.error(`❌ Error processing anomaly:`, error.message);
@@ -112,13 +121,14 @@ class AnomalyDetector {
 
       const device = deviceQuery.rows[0];
 
-      // Insert anomaly record
+      // Insert anomaly record with blockchain status tracking
       const result = await db.pool.query(
         `INSERT INTO incident_alerts (
           incident_id, device_id, policy_id, incident_type, severity_level,
           incident_timestamp, incident_location, sensor_data,
-          blockchain_tx_hash, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP)
+          blockchain_tx_hash, blockchain_status, kora_notified, insurance_notified,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
         RETURNING *`,
         [
           `INC-${Date.now()}-${anomaly.deviceId}`,
@@ -134,6 +144,9 @@ class AnomalyDetector {
             excess_speed: anomaly.speed - anomaly.threshold,
           }),
           null, // Will be updated after blockchain transaction
+          "pending", // blockchain_status starts as pending
+          true, // kora_notified - KORA is immediately notified
+          true, // insurance_notified - company is immediately notified
         ]
       );
 
@@ -148,7 +161,7 @@ class AnomalyDetector {
     }
   }
 
-  // Record anomaly on blockchain (placeholder - needs smart contract update)
+  // Record anomaly on blockchain - IMPLEMENTED
   async recordAnomalyOnBlockchain(anomaly) {
     try {
       // Create hash of anomaly data for blockchain
@@ -161,23 +174,32 @@ class AnomalyDetector {
       });
 
       const dataHash = ethers.keccak256(ethers.toUtf8Bytes(anomalyDataString));
+      const incidentId = `INC-${Date.now()}-${anomaly.deviceId}`;
 
+      console.log(`📝 Recording incident on blockchain: ${incidentId}`);
       console.log(`📝 Anomaly data hash: ${dataHash}`);
 
-      // TODO: Call smart contract function when implemented
-      // const tx = await this.contract.recordAnomaly(
-      //   anomaly.deviceId,
-      //   anomaly.incidentType,
-      //   anomaly.timestamp,
-      //   dataHash
-      // );
-      // const receipt = await tx.wait();
+      // Call smart contract function to record incident
+      const tx = await this.contract.recordIncident(
+        incidentId,
+        anomaly.deviceId,
+        anomaly.incidentType,
+        anomaly.severity,
+        dataHash
+      );
+
+      console.log(`📝 Transaction sent: ${tx.hash}`);
+
+      // Wait for transaction confirmation
+      await tx.wait();
+      console.log(`✅ Transaction confirmed: ${tx.hash}`);
 
       return {
         success: true,
-        txHash: "pending_anomaly_blockchain_implementation",
+        txHash: tx.hash,
         dataHash: dataHash,
-        message: "Anomaly hash generated, blockchain integration pending",
+        incidentId: incidentId,
+        message: "Incident successfully recorded on blockchain",
       };
     } catch (error) {
       console.error("❌ Blockchain recording failed:", error.message);
@@ -197,7 +219,160 @@ class AnomalyDetector {
     }
   }
 
-  // Send alerts to dashboards
+  // Send immediate alert to dashboards (real-time)
+  async sendImmediateAlert(anomaly, dbResult) {
+    try {
+      const alertData = {
+        type: "anomaly_detected",
+        deviceId: anomaly.deviceId,
+        incidentType: anomaly.incidentType,
+        severity: anomaly.severity,
+        speed: anomaly.speed,
+        timestamp: anomaly.timestamp,
+        location: anomaly.location,
+        policyHolder: dbResult.device?.policy_holder_name,
+        insuranceCompany: dbResult.device?.company_name,
+        blockchainStatus: "pending", // Blockchain recording in progress
+        incidentId: dbResult.incident.incident_id,
+      };
+
+      // Log immediate alert
+      console.log("⚡ IMMEDIATE ALERT SENT TO DASHBOARDS:");
+      console.log("📱 Insurance Company Dashboard:", {
+        message: `IMMEDIATE: Speeding detected: ${anomaly.speed} km/h`,
+        customer: dbResult.device?.policy_holder_name,
+        device: anomaly.deviceId,
+        severity: anomaly.severity,
+        status: "⏳ Blockchain recording in progress",
+      });
+
+      console.log("📱 KORA Dashboard:", {
+        message: `IMMEDIATE: Anomaly detected and recorded`,
+        company: dbResult.device?.company_name,
+        device: anomaly.deviceId,
+        status: "⏳ Blockchain recording in progress",
+      });
+
+      return { success: true, alertData };
+    } catch (error) {
+      console.error("❌ Immediate alert sending failed:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Record anomaly on blockchain asynchronously
+  async recordAnomalyOnBlockchainAsync(anomaly, incidentDbId) {
+    try {
+      console.log(
+        `🔗 Starting async blockchain recording for incident ID: ${incidentDbId}`
+      );
+
+      // Record on blockchain
+      const blockchainResult = await this.recordAnomalyOnBlockchain(anomaly);
+
+      if (blockchainResult.success) {
+        // Update database with blockchain proof
+        await this.updateIncidentWithBlockchainProof(
+          incidentDbId,
+          blockchainResult.txHash
+        );
+
+        // Send blockchain confirmation alert
+        await this.sendBlockchainConfirmation(
+          anomaly,
+          blockchainResult,
+          incidentDbId
+        );
+
+        console.log(
+          `✅ Blockchain recording completed for incident ID: ${incidentDbId}`
+        );
+      } else {
+        // Mark as failed in database
+        await this.markBlockchainRecordingFailed(
+          incidentDbId,
+          blockchainResult.error
+        );
+        console.error(
+          `❌ Blockchain recording failed for incident ID: ${incidentDbId}`
+        );
+      }
+    } catch (error) {
+      console.error(`❌ Async blockchain recording error:`, error.message);
+      await this.markBlockchainRecordingFailed(incidentDbId, error.message);
+    }
+  }
+
+  // Update incident record with blockchain proof
+  async updateIncidentWithBlockchainProof(incidentDbId, txHash) {
+    try {
+      await db.pool.query(
+        `UPDATE incident_alerts
+         SET blockchain_tx_hash = $1,
+             blockchain_status = 'confirmed',
+             blockchain_registered = true,
+             blockchain_recorded_at = CURRENT_TIMESTAMP,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [txHash, incidentDbId]
+      );
+      console.log(`✅ Database updated with blockchain proof: ${txHash}`);
+    } catch (error) {
+      console.error(
+        "❌ Failed to update database with blockchain proof:",
+        error.message
+      );
+    }
+  }
+
+  // Mark blockchain recording as failed
+  async markBlockchainRecordingFailed(incidentDbId, errorMessage) {
+    try {
+      await db.pool.query(
+        `UPDATE incident_alerts
+         SET blockchain_status = 'failed',
+             resolution_notes = $1,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2`,
+        [`Blockchain recording failed: ${errorMessage}`, incidentDbId]
+      );
+      console.log(
+        `❌ Marked blockchain recording as failed for incident ID: ${incidentDbId}`
+      );
+    } catch (error) {
+      console.error(
+        "❌ Failed to mark blockchain recording as failed:",
+        error.message
+      );
+    }
+  }
+
+  // Send blockchain confirmation alert
+  async sendBlockchainConfirmation(anomaly, blockchainResult, incidentDbId) {
+    try {
+      console.log("⛓️ BLOCKCHAIN CONFIRMATION SENT TO DASHBOARDS:");
+      console.log("📱 Insurance Company Dashboard:", {
+        message: `Blockchain confirmed: Incident immutably recorded`,
+        device: anomaly.deviceId,
+        txHash: blockchainResult.txHash,
+        status: "✅ Blockchain confirmed",
+      });
+
+      console.log("📱 KORA Dashboard:", {
+        message: `Transparency confirmed: Incident on blockchain`,
+        device: anomaly.deviceId,
+        txHash: blockchainResult.txHash,
+        status: "✅ Blockchain confirmed",
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Blockchain confirmation alert failed:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Legacy method - keeping for backward compatibility
   async sendAlerts(anomaly, dbResult, blockchainResult) {
     try {
       const alertData = {

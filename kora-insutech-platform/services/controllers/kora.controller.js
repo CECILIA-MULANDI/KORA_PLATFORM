@@ -144,7 +144,7 @@ class KoraController {
 
     try {
       let query = `
-        SELECT 
+        SELECT
           i.incident_id,
           i.incident_type,
           i.severity_level,
@@ -152,6 +152,8 @@ class KoraController {
           i.incident_location,
           i.sensor_data,
           i.blockchain_tx_hash,
+          i.blockchain_status,
+          i.blockchain_recorded_at,
           i.created_at,
           d.device_id,
           p.policy_number,
@@ -185,6 +187,8 @@ class KoraController {
         location: incident.incident_location,
         incident_details: incident.sensor_data,
         blockchain_proof: incident.blockchain_tx_hash,
+        blockchain_status: incident.blockchain_status, // 'pending', 'confirmed', 'failed'
+        blockchain_recorded_at: incident.blockchain_recorded_at,
         device_info: {
           device_id: incident.device_id,
         },
@@ -200,8 +204,10 @@ class KoraController {
         },
         transparency_status: {
           blockchain_recorded: !!incident.blockchain_tx_hash,
+          blockchain_status: incident.blockchain_status,
           company_notified: true, // Always true when incident is created
           kora_verified: true,
+          real_time_recorded: true, // Incidents are now recorded immediately
         },
         detected_at: incident.created_at,
       }));

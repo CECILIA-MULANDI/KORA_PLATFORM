@@ -29,6 +29,37 @@
       {
         "indexed": true,
         "internalType": "string",
+        "name": "_incidentId",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "string",
+        "name": "_deviceId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "_incidentType",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "_dataHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "IncidentRecorded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "string",
         "name": "_insurerId",
         "type": "string"
       }
@@ -107,6 +138,111 @@
         "internalType": "string[]",
         "name": "",
         "type": "string[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_incidentId",
+        "type": "string"
+      }
+    ],
+    "name": "getIncidentRecord",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "incidentId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "deviceId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "incidentType",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "timestamp",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "dataHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "string",
+            "name": "severity",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isActive",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct InsuranceCompanies.IncidentRecord",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "incidentRecords",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "incidentId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "deviceId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "incidentType",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "dataHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "severity",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "isActive",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -224,6 +360,39 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_incidentId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_deviceId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_incidentType",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_severity",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_dataHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "recordIncident",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

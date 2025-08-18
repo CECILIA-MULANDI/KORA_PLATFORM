@@ -174,6 +174,8 @@ const createTables = {
       kora_incident_id UUID UNIQUE NOT NULL DEFAULT uuid_generate_v4(),
       blockchain_registered BOOLEAN DEFAULT FALSE,
       blockchain_tx_hash VARCHAR(255),
+      blockchain_status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'confirmed', 'failed'
+      blockchain_recorded_at TIMESTAMP WITH TIME ZONE, -- When blockchain recording completed
 
       -- Metadata
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
